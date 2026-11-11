@@ -1,0 +1,34 @@
+name: Update calendar feed
+
+on:
+  schedule:
+    - cron: "0 */6 * * *"   # every 6 hours (UTC), on GitHub's servers
+  workflow_dispatch:         # "Run workflow" button for manual runs
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build calendar
+        run: python build_calendar.py
+
+      - name: Commit changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/events.json docs/ff-usd.ics
+          if git diff --cached --quiet; then
+            echo "No changes"
+          else
+            git commit -m "Update calendar feed"
+            git push
+          fi

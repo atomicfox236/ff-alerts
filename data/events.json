@@ -1,0 +1,49 @@
+{
+  "cpi-20261110@ff-alerts": {
+    "uid": "cpi-20261110@ff-alerts",
+    "category": "cpi",
+    "all_day": false,
+    "start_utc": "2026-11-10T13:30:00+00:00",
+    "label": "CPI",
+    "emoji": "📊",
+    "titles": [
+      "Core CPI m/m",
+      "CPI m/m"
+    ],
+    "lines": [
+      "Core CPI m/m (forecast 0.2%, previous 0.3%)",
+      "CPI m/m (forecast 0.3%, previous 0.6%)"
+    ],
+    "source": "Forex Factory"
+  },
+  "holiday-20261111@ff-alerts": {
+    "uid": "holiday-20261111@ff-alerts",
+    "category": "holiday",
+    "all_day": true,
+    "date": "2026-11-11",
+    "titles": [
+      "Bank Holiday"
+    ],
+    "lines": [
+      "Bank Holiday"
+    ],
+    "source": "Forex Factory"
+  },
+  "ppi-20261113@ff-alerts": {
+    "uid": "ppi-20261113@ff-alerts",
+    "category": "ppi",
+    "all_day": false,
+    "start_utc": "2026-11-13T13:30:00+00:00",
+    "label": "PPI",
+    "emoji": "🏭",
+    "titles": [
+      "Core PPI m/m",
+      "PPI m/m"
+    ],
+    "lines": [
+      "Core PPI m/m (forecast 0.3%, previous 0.7%)",
+      "PPI m/m (forecast 0.4%, previous 1.3%)"
+    ],
+    "source": "Forex Factory"
+  }
+}
