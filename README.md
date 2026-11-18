@@ -8,7 +8,7 @@ This is a calendar you subscribe to on your iPhone. It alerts you about these Fo
 | 💼 NFP (Non-Farm Employment Change) | 8:00 PM Pacific the night before, plus 30 min before release |
 | 📊 CPI (CPI m/m, Core CPI m/m, ...) | same |
 | 🏭 PPI | same |
-| 🏛 FOMC Meeting Minutes | same |
+| 🏛 FOMC rate decision (Federal Funds Rate / FOMC Statement) | same |
 
 ## How it works
 - **Data source:** Forex Factory's official weekly export, `https://nfs.faireconomy.media/ff_calendar_thisweek.json`. It's a raw data file, so search engines don't list it, but it loads if you paste it into a browser.

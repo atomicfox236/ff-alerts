@@ -1,7 +1,7 @@
 """Build an iPhone-friendly calendar feed of Forex Factory USD alerts.
 
 Pulls Forex Factory's weekly export, keeps USD bank holidays plus
-NFP / CPI / PPI / FOMC Meeting Minutes, remembers them in data/events.json
+NFP / CPI / PPI / FOMC rate decisions, remembers them in data/events.json
 (the FF feed only covers the current week), adds computed Federal Reserve
 bank holidays a year ahead as a backstop, and writes docs/ff-usd.ics.
 
@@ -38,8 +38,10 @@ NEWS_RULES = [
     ("nfp", "NFP", "\U0001F4BC", lambda t: t == "Non-Farm Employment Change"),
     ("cpi", "CPI", "\U0001F4CA", lambda t: re.search(r"\bCPI\b", t) is not None),
     ("ppi", "PPI", "\U0001F3ED", lambda t: re.search(r"\bPPI\b", t) is not None),
-    ("fomc-minutes", "FOMC Minutes", "\U0001F3DB", lambda t: t == "FOMC Meeting Minutes"),
+    ("fomc-decision", "FOMC Rate Decision", "\U0001F3DB",
+     lambda t: t in ("Federal Funds Rate", "FOMC Statement")),
 ]
+ACTIVE_CATEGORIES = {"holiday"} | {rule[0] for rule in NEWS_RULES}
 
 
 # ---------------------------------------------------------------- fetching
@@ -169,8 +171,9 @@ def merge(stored: dict, backstop: dict, fresh: dict, today: date) -> dict:
             return date.fromisoformat(ev["date"])
         return datetime.fromisoformat(ev["start_utc"]).date()
 
+    # drop past events and any category no longer in NEWS_RULES
     return {uid: ev for uid, ev in sorted(merged.items(), key=lambda kv: event_day(kv[1]).isoformat())
-            if event_day(ev) >= cutoff}
+            if event_day(ev) >= cutoff and ev["category"] in ACTIVE_CATEGORIES}
 
 
 # ---------------------------------------------------------------- ICS
@@ -224,7 +227,7 @@ def build_ics(events: dict, now: datetime) -> str:
         "BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//ff-alerts//Forex Factory USD alerts//EN",
         "CALSCALE:GREGORIAN", "METHOD:PUBLISH",
         "X-WR-CALNAME:FF USD Alerts",
-        "X-WR-CALDESC:Forex Factory USD bank holidays\\, NFP\\, CPI\\, PPI and FOMC Minutes",
+        "X-WR-CALDESC:Forex Factory USD bank holidays\\, NFP\\, CPI\\, PPI and FOMC rate decisions",
         "X-WR-TIMEZONE:America/Los_Angeles",
         "REFRESH-INTERVAL;VALUE=DURATION:PT1H", "X-PUBLISHED-TTL:PT1H",
     ]

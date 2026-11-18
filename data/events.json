@@ -45,20 +45,5 @@
       "PPI m/m (forecast 0.4%, previous 1.3%)"
     ],
     "source": "Forex Factory"
-  },
-  "fomc-minutes-20261118@ff-alerts": {
-    "uid": "fomc-minutes-20261118@ff-alerts",
-    "category": "fomc-minutes",
-    "all_day": false,
-    "start_utc": "2026-11-18T19:00:00+00:00",
-    "label": "FOMC Minutes",
-    "emoji": "🏛",
-    "titles": [
-      "FOMC Meeting Minutes"
-    ],
-    "lines": [
-      "FOMC Meeting Minutes"
-    ],
-    "source": "Forex Factory"
   }
 }
