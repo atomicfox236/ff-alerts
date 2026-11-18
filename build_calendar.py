@@ -30,6 +30,8 @@ OUTPUT = ROOT / "docs" / "ff-usd.ics"
 PACIFIC = ZoneInfo("America/Los_Angeles")
 ALERT_HOUR_PT = 20          # 8 PM the night before
 PRE_RELEASE_MINUTES = 30    # second alert for news events
+MORNING_ALERT = (6, 30)     # 6:30 AM PT morning-of reminder ...
+MORNING_CATEGORIES = {"holiday", "fomc-decision"}  # ... for these categories
 KEEP_PAST_DAYS = 30         # drop stored events older than this
 BACKSTOP_DAYS = 400         # how far ahead to seed computed holidays
 
@@ -221,6 +223,14 @@ def night_before_lead(start_utc: datetime) -> timedelta:
     return start_utc - alert.astimezone(timezone.utc)
 
 
+def morning_lead(start_utc: datetime) -> timedelta:
+    """Time between the morning-of alert (Pacific) and the release; <= 0 if release is earlier."""
+    local = start_utc.astimezone(PACIFIC)
+    h, m = MORNING_ALERT
+    alert = datetime.combine(local.date(), datetime.min.time().replace(hour=h, minute=m), PACIFIC)
+    return start_utc - alert.astimezone(timezone.utc)
+
+
 def build_ics(events: dict, now: datetime) -> str:
     stamp = now.astimezone(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     lines = [
@@ -247,6 +257,10 @@ def build_ics(events: dict, now: datetime) -> str:
             # all-day events start at local midnight, so -4h = 8 PM the night before
             lines += _alarm(f"-PT{24 - ALERT_HOUR_PT}H",
                             f"Tomorrow is a USD bank holiday - don't plan to trade. {summary}")
+            if "holiday" in MORNING_CATEGORIES:
+                h, m = MORNING_ALERT  # positive trigger = time after local midnight
+                lines += _alarm(f"PT{h}H{m}M" if m else f"PT{h}H",
+                                f"Today is a USD bank holiday - don't trade. {summary}")
         else:
             start = datetime.fromisoformat(ev["start_utc"])
             end = start + timedelta(minutes=15)
@@ -257,6 +271,10 @@ def build_ics(events: dict, now: datetime) -> str:
                       f"SUMMARY:{_esc(summary)}", f"DESCRIPTION:{_esc(desc)}"]
             lines += _alarm(_duration(night_before_lead(start)),
                             f"Tomorrow {local}: {ev['label']} release ({', '.join(ev['titles'])})")
+            morning = morning_lead(start)
+            if ev["category"] in MORNING_CATEGORIES and morning > timedelta(minutes=PRE_RELEASE_MINUTES):
+                lines += _alarm(_duration(morning),
+                                f"Today {local}: {ev['label']} - careful before you trade")
             lines += _alarm(f"-PT{PRE_RELEASE_MINUTES}M",
                             f"{ev['label']} in {PRE_RELEASE_MINUTES} min ({local})")
         lines.append("END:VEVENT")
