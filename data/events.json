@@ -45,5 +45,18 @@
       "PPI m/m (forecast 0.4%, previous 1.3%)"
     ],
     "source": "Forex Factory"
+  },
+  "holiday-20261126@ff-alerts": {
+    "uid": "holiday-20261126@ff-alerts",
+    "category": "holiday",
+    "all_day": true,
+    "date": "2026-11-26",
+    "titles": [
+      "Bank Holiday"
+    ],
+    "lines": [
+      "Bank Holiday"
+    ],
+    "source": "Forex Factory"
   }
 }
