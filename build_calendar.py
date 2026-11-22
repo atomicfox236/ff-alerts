@@ -26,6 +26,8 @@ FEED_URL = "https://nfs.faireconomy.media/ff_calendar_thisweek.json"
 ROOT = Path(__file__).resolve().parent
 STORE = ROOT / "data" / "events.json"
 OUTPUT = ROOT / "docs" / "ff-usd.ics"
+WEEK_PAGE = ROOT / "docs" / "week.html"   # embeddable "this week" box (e.g. in Notion)
+WEEK_IMPACTS = {"High", "Holiday"}        # which USD rows the week page shows
 
 PACIFIC = ZoneInfo("America/Los_Angeles")
 ALERT_HOUR_PT = 20          # 8 PM the night before
@@ -283,6 +285,105 @@ def build_ics(events: dict, now: datetime) -> str:
     return "\r\n".join(folded) + "\r\n"
 
 
+# ---------------------------------------------------------------- week page
+def _html(text: str) -> str:
+    return (text.replace("&", "&amp;").replace("<", "&lt;")
+                .replace(">", "&gt;").replace('"', "&quot;"))
+
+
+def build_week_html(items: list[dict], now: datetime) -> str:
+    """Compact Sun-Sat table of this week's USD high-impact news + holidays, times in PT."""
+    rows = []
+    for item in items:
+        if item.get("country") != "USD" or item.get("impact") not in WEEK_IMPACTS:
+            continue
+        start = datetime.fromisoformat(item["date"])
+        rows.append((start, item))
+    rows.sort(key=lambda r: r[0])
+
+    # the FF feed covers one Sun-Sat week; anchor on its first row (or today)
+    anchor = (rows[0][0].astimezone(PACIFIC).date() if rows
+              else now.astimezone(PACIFIC).date())
+    sunday = anchor - timedelta(days=(anchor.weekday() + 1) % 7)
+    days = [sunday + timedelta(days=i) for i in range(7)]
+    today = now.astimezone(PACIFIC).date()
+
+    by_day: dict[date, list[str]] = {d: [] for d in days}
+    for start, item in rows:
+        title = (item.get("title") or "").strip()
+        if item.get("impact") == "Holiday":
+            day = start.date()  # FF holiday date is the holiday itself
+            cells = ('<td class="time">All day</td>'
+                     f'<td class="ev"><span class="hol">\U0001F6AB {_html(title)} - no trading</span></td>'
+                     '<td class="num"></td><td class="num"></td>')
+        else:
+            local = start.astimezone(PACIFIC)
+            day = local.date()
+            kind = classify(item)
+            tag = f"{kind[2]} " if kind else ""
+            t = local.strftime("%I:%M%p").lstrip("0").lower()
+            cells = (f'<td class="time">{t}</td>'
+                     f'<td class="ev"><span class="dot"></span>{tag}{_html(title)}</td>'
+                     f'<td class="num">{_html(item.get("forecast") or "")}</td>'
+                     f'<td class="num">{_html(item.get("previous") or "")}</td>')
+        if day in by_day:
+            by_day[day].append(cells)
+
+    body = []
+    for i, d in enumerate(days):
+        label = f'{d.strftime("%a")}<br>{d.strftime("%b")} {d.day}'
+        cls = "day today" if d == today else "day"
+        shade = " alt" if i % 2 else ""
+        events = by_day[d] or ['<td class="time"></td><td class="ev empty"></td>'
+                               '<td class="num"></td><td class="num"></td>']
+        for j, cells in enumerate(events):
+            first = (f'<td class="{cls}" rowspan="{len(events)}">{label}</td>' if j == 0 else "")
+            body.append(f'<tr class="row{shade}">{first}{cells}</tr>')
+
+    week_label = f'{days[0].strftime("%b")} {days[0].day} - {days[-1].strftime("%b")} {days[-1].day}'
+    updated = now.astimezone(PACIFIC).strftime("%a %b %d, %I:%M %p PT").replace(" 0", " ")
+    return f"""<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>USD news - {week_label}</title>
+<style>
+:root {{ --bg:#ffffff; --alt:#f5f5f4; --fg:#2f2f2f; --muted:#8a8a87; --line:#e6e6e4;
+        --head:#37352f; --red:#d44c47; --today:#2383e2; }}
+@media (prefers-color-scheme: dark) {{
+  :root {{ --bg:#191919; --alt:#202020; --fg:#e6e6e4; --muted:#8a8a87; --line:#2f2f2f;
+          --head:#e6e6e4; --red:#ff6b6b; --today:#5aa9ff; }} }}
+* {{ box-sizing:border-box; }}
+body {{ margin:0; background:var(--bg); color:var(--fg);
+       font:13px/1.35 -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif; }}
+.top {{ display:flex; justify-content:space-between; align-items:baseline; padding:10px 12px 6px; }}
+.top b {{ color:var(--head); font-size:14px; }}
+.top span {{ color:var(--muted); font-size:11px; }}
+table {{ width:100%; border-collapse:collapse; }}
+th {{ text-align:left; font-weight:500; color:var(--muted); font-size:11px; padding:4px 8px;
+      border-bottom:1px solid var(--line); }}
+td {{ padding:7px 8px; border-bottom:1px solid var(--line); vertical-align:middle; }}
+tr.alt td {{ background:var(--alt); }}
+td.day {{ width:64px; text-align:center; color:var(--muted); font-size:12px; }}
+td.day.today {{ color:var(--today); font-weight:600; }}
+td.time {{ width:72px; white-space:nowrap; color:var(--muted); }}
+td.num {{ width:70px; text-align:right; white-space:nowrap; }}
+th.num {{ text-align:right; }}
+.dot {{ display:inline-block; width:8px; height:8px; border-radius:2px; background:var(--red);
+        margin-right:8px; vertical-align:1px; }}
+.hol {{ color:var(--red); font-weight:500; }}
+.foot {{ padding:6px 12px 10px; color:var(--muted); font-size:11px; }}
+.foot a {{ color:var(--muted); }}
+</style></head><body>
+<div class="top"><b>USD high-impact news &middot; {week_label}</b><span>times in PT</span></div>
+<table>
+<tr><th></th><th>Time</th><th>Event</th><th class="num">Forecast</th><th class="num">Previous</th></tr>
+{chr(10).join(body)}
+</table>
+<div class="foot">Updated {updated} &middot; <a href="https://www.forexfactory.com/calendar?week=this" target="_blank" rel="noopener">Forex Factory</a></div>
+</body></html>
+"""
+
+
 # ---------------------------------------------------------------- main
 def main(feed_items: list[dict] | None = None) -> None:
     now = datetime.now(timezone.utc)
@@ -306,6 +407,10 @@ def main(feed_items: list[dict] | None = None) -> None:
 
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
     OUTPUT.write_bytes(build_ics(merged, now).encode("utf-8"))
+
+    # only rewrite the week page when FF answered, so an outage doesn't blank it
+    if feed_items:
+        WEEK_PAGE.write_text(build_week_html(feed_items, now), "utf-8")
     print(f"FF rows: {len(feed_items)}, matched this week: {len(fresh)}, "
           f"events in calendar: {len(merged)} -> {OUTPUT.relative_to(ROOT)}")
 
